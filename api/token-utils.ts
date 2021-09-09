@@ -2,8 +2,10 @@ import {CookieOptions, Response} from 'express';
 import jwt from 'jsonwebtoken';
 
 import {
+  AccessToken,
   AccessTokenPayload,
   Cookies,
+  RefreshToken,
   RefreshTokenPayload,
   UserDocument
 } from '@shared';
@@ -13,7 +15,8 @@ const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET!;
 
 enum TokenExpiration {
   Access = 5 * 60,
-  Refresh = 7 * 24 * 50 * 60
+  Refresh = 7 * 24 * 50 * 60,
+  RefreshIfLessThan = 4 * 24 * 60 * 60
 }
 
 function signAccessToken(payload: AccessTokenPayload) {
@@ -66,4 +69,40 @@ export function setTokens(res: Response, access: string, refresh?: string) {
   if (refresh) {
     res.cookie(Cookies.RefreshToken, refresh, refreshTokenCookieOptions);
   }
+}
+
+export function verifyRefreshToken(token: string) {
+  return jwt.verify(token, refreshTokenSecret) as RefreshToken;
+}
+
+export function verifyAccessToken(token: string) {
+  try {
+    return jwt.verify(token, accessTokenSecret) as AccessToken;
+  } catch (e) {}
+}
+
+export function refreshTokens(current: RefreshToken, tokenVersion: number) {
+  if (tokenVersion !== current.version) {
+    throw 'Token revoked';
+  }
+
+  const accessPayload: AccessTokenPayload = {userId: current.userId};
+  const accessToken = signAccessToken(accessPayload);
+
+  let refreshPayload: RefreshTokenPayload | undefined;
+  const expiration = new Date(current.exp * 1000);
+  const now = new Date();
+  const seconsUntilExpiration = (expiration.getTime() - now.getTime()) / 1000;
+
+  if (seconsUntilExpiration < TokenExpiration.RefreshIfLessThan) {
+    refreshPayload = {userId: current.userId, version: tokenVersion};
+  }
+  const refreshToken = refreshPayload && signRefreshToken(refreshPayload);
+
+  return {accessToken, refreshToken};
+}
+
+export function clearTokens(res: Response) {
+  res.cookie(Cookies.AccessToken, '', {...defaultCookieOptions, maxAge: 0});
+  res.cookie(Cookies.RefreshToken, '', {...defaultCookieOptions, maxAge: 0});
 }

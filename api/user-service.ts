@@ -31,3 +31,21 @@ export async function getUserByGitHubUserId(gitHubUserId: number) {
   const coll = await collection();
   return coll.findOne({gitHubUserId: gitHubUserId.toString()});
 }
+
+export async function getUserById(id: string) {
+  const coll = await collection();
+  return coll.findOne({id});
+}
+
+export async function increaseTokenVersion(userId: string) {
+  const coll = await collection();
+  const result = await coll.findOneAndUpdate(
+    {id: userId},
+    {$inc: {tokenVersion: 1}}
+  );
+  if (result.ok) {
+    return result.value;
+  }
+
+  throw new Error();
+}
