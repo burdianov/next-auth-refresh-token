@@ -1,7 +1,7 @@
 {
-  "prettier.singleQuote": true,
-  "prettier.bracketSpacing": false,
-  "prettier.semi": true,
-  "prettier.arrowParens": "avoid",
-  "prettier.printWidth": 80
+  // "prettier.singleQuote": true,
+  // "prettier.bracketSpacing": false,
+  // "prettier.semi": true,
+  // "prettier.arrowParens": "avoid",
+  // "prettier.printWidth": 80
 }

@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
-import {getGitHubUser} from './github-adapter';
-import {databaseClient} from './database';
+import { getGitHubUser } from './github-adapter';
+import { databaseClient } from './database';
 import {
   createUser,
   getUserByGitHubUserId,
@@ -17,18 +17,18 @@ import {
   setTokens,
   verifyRefreshToken
 } from './token-utils';
-import {Cookies, UserDocument} from '@shared';
-import {authMiddleware} from './auth-middleware';
+import { Cookies, UserDocument } from '@shared';
+import { authMiddleware } from './auth-middleware';
 
 const app = express();
 
-app.use(cors({credentials: true, origin: process.env.CLIENT_URL}));
+app.use(cors({ credentials: true, origin: process.env.CLIENT_URL }));
 app.use(cookieParser());
 
 app.get('/', (req, res) => res.send('api is healthy'));
 
 app.get('/github', async (req, res) => {
-  const {code} = req.query;
+  const { code } = req.query;
 
   const gitHubUser = await getGitHubUser(code as string);
   let user = (await getUserByGitHubUserId(gitHubUser.id)) as UserDocument;
@@ -36,13 +36,13 @@ app.get('/github', async (req, res) => {
     await createUser(gitHubUser.name, gitHubUser.id);
   }
 
-  const {accessToken, refreshToken} = buildTokens(user);
+  const { accessToken, refreshToken } = buildTokens(user);
   setTokens(res, accessToken, refreshToken);
 
   res.redirect(`${process.env.CLIENT_URL}/me`);
 });
 
-app.get('/refresh', async (req, res) => {
+app.post('/refresh', async (req, res) => {
   try {
     const current = verifyRefreshToken(req.cookies[Cookies.RefreshToken]);
     const user = await getUserById(current.userId);
@@ -50,7 +50,7 @@ app.get('/refresh', async (req, res) => {
       throw 'User not found';
     }
 
-    const {accessToken, refreshToken} = refreshTokens(
+    const { accessToken, refreshToken } = refreshTokens(
       current,
       user.tokenVersion
     );
@@ -59,14 +59,16 @@ app.get('/refresh', async (req, res) => {
   } catch (error) {
     clearTokens(res);
   }
+
+  res.end();
 });
 
-app.get('/logout', authMiddleware, (req, res) => {
+app.post('/logout', authMiddleware, (req, res) => {
   clearTokens(res);
   res.end();
 });
 
-app.get('/logout-all', authMiddleware, async (req, res) => {
+app.post('/logout-all', authMiddleware, async (req, res) => {
   await increaseTokenVersion(res.locals.token.userId);
 
   clearTokens(res);
