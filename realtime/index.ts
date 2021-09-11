@@ -1,16 +1,17 @@
+import * as cookie from 'cookie';
 import { createServer, IncomingMessage } from 'http';
+import * as jwt from 'jsonwebtoken';
 import { Socket } from 'net';
 import * as WebSocket from 'ws';
-import * as cookie from 'cookie';
-import * as jwt from 'jsonwebtoken';
-import { Cookies, AccessToken } from '@shared';
 
-const server = createServer((req, res) => res.end());
-const wss = new WebSocket.Server({ noServer: true });
+import { AccessToken, Cookies } from '@shared';
 
 interface AuthenticatedSocket extends WebSocket {
   accessToken: AccessToken;
 }
+
+const server = createServer((req, res) => res.end());
+const wss = new WebSocket.Server({ noServer: true });
 
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET!;
 
@@ -35,17 +36,17 @@ server.on(
   }
 );
 
-function validateExpiration(socket: AuthenticatedSocket) {
-  if (new Date().getTime() / 1000 > socket.accessToken.exp) {
-    socket.close();
-  }
-}
-
 function broadcast(message: any) {
   (wss.clients as Set<AuthenticatedSocket>).forEach((client) => {
     validateExpiration(client);
     client.send(JSON.stringify(message));
   });
+}
+
+function validateExpiration(socket: AuthenticatedSocket) {
+  if (new Date().getTime() / 1000 > socket.accessToken.exp) {
+    socket.close();
+  }
 }
 
 wss.on('connection', (socket: AuthenticatedSocket) => {
